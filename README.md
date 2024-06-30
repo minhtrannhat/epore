@@ -37,6 +37,12 @@ queue.poll(&mut events, None).unwrap();
 //...data is ready on one of the tracked streams
 ```
 
+## How To Run
+
+- Get and run the `delayServer` from [Packt's Asynchronous-Programming-in-Rust repo](https://github.com/PacktPublishing/Asynchronous-Programming-in-Rust/tree/main/delayserver).
+
+- In another window, run this program with `cargo run`.
+
 ## Notes
 
 ### `Registry` and `Poll` Relationship
