@@ -16,7 +16,7 @@ pub struct Registry {
 impl Registry {
     // Register interest by adding it
     // TcpStream is a high level representation of a TCP socket file descriptor
-    // token is too differentiate from different file descriptor, as a label
+    // token is to differentiate from different file descriptor, as a label
     pub fn register(&self, source: &TcpStream, token: usize, interests: i32) -> Result<()> {
         match unsafe {
             ffi::epoll_ctl(

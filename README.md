@@ -32,7 +32,7 @@ queue.registry().register(&stream, id, ...).unwrap();
 // store the to be tracked events
 let mut events = Vec::with_capacity(1);
 
-// This will block the curren thread
+// This will block the current thread
 queue.poll(&mut events, None).unwrap();
 //...data is ready on one of the tracked streams
 ```
