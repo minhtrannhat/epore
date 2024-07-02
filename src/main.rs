@@ -3,7 +3,6 @@ use std::{
     collections::HashSet,
     io::{self, Read, Result, Write},
     net::TcpStream,
-    usize,
 };
 
 use bytes::{BufMut, BytesMut};
@@ -35,6 +34,8 @@ fn handle_event(
 ) -> Result<usize> {
     let mut handled_events_curr = 0;
 
+    let handling_event_func_prefix: &str = "EventHandler";
+
     for event in events {
         // The token helps differentiate each I/O resource
         // in our case, there are
@@ -49,26 +50,50 @@ fn handle_event(
                 // data_buffer_read_from_tcp_stream is completely drained
                 // we can consider the event successfully handled
                 Ok(0) => {
+                    println!(
+                        "{handling_event_func_prefix} - {:?} - Data buffer is completely drained",
+                        event
+                    );
+
                     if !handled_tokens.insert(resource_index) {
+                        println!("{handling_event_func_prefix} - {:?} - This TcpStream/Token is already in the HashSet and therefore no need to be handled", event);
                         break;
                     };
+
                     handled_events_curr += 1;
+                    println!(
+                        "{handling_event_func_prefix} - {:?} - Handled one Event/TcpStream",
+                        event
+                    );
                     break;
                 }
 
-                // data_buffer_read_from_tcp_stream is not completely drained
+                // data_buffer_read_from_tcp_stream contains n bytes of data which we should drain
                 // we still have some data left in the buffer
                 Ok(n) => {
+                    println!(
+                        "{handling_event_func_prefix} - {:?} - Found {n} bytes to read from.\n",
+                        event
+                    );
                     let txt = String::from_utf8_lossy(&data_buffer_read_from_tcp_stream[..n]);
                     println!("RECEIVED: {:?}", event);
-                    println!("{txt}\n------\n");
+                    println!("{txt}\n------\n\n");
                 }
 
-                // WouldBlock indicates that the data transfer is not complete,
-                // but there is no data ready right now.
-                // the transfer must be retried
-                Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
-                Err(error) if error.kind() == io::ErrorKind::Interrupted => break,
+                // The operation needs to block to complete, but the blocking operation was requested to not occur.
+                // We did set the TcpStream mode to be non blocking
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                    println!("{handling_event_func_prefix} - {:?} - TcpStream {resource_index} transfer is not complete.", event);
+                    break;
+                }
+
+                // The OS can sometimes interrupt our buffer reading
+                // This is not an error and we just simply try again
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => {
+                    println!("{handling_event_func_prefix} - {:?} - OS interrupted our buffer reading process. Will resume later", event);
+                    break;
+                }
+
                 // return the error and break the loop
                 Err(error) => return Err(error),
             }
@@ -177,7 +202,10 @@ fn main() -> Result<()> {
         }
 
         // the loop only reaches here when an event is handled
-        handled_events += handle_event(&events_buffer, &mut tcp_streams, &mut handled_tokens)?;
+        let handled_events_curr =
+            handle_event(&events_buffer, &mut tcp_streams, &mut handled_tokens)?;
+
+        handled_events += handled_events_curr;
     }
 
     println!("Finished receiving all responses");
